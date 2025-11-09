@@ -20,14 +20,34 @@ WildRydes.map = WildRydes.map || {};
     ) {
         var wrMap = WildRydes.map;
 
+        // 🗺️ Create map with light gray style
         var map = new Map({ basemap: 'gray-vector' });
 
+        // 🌍 Default view (global map)
         var view = new MapView({
-            center: [-122.31, 47.60],
+            center: [0, 0], // Center of the world
             container: 'map',
             map: map,
-            zoom: 12
+            zoom: 2 // Zoomed out to show the world
         });
+
+        // 📍 Try to auto-center on user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    const userLon = position.coords.longitude;
+                    const userLat = position.coords.latitude;
+                    view.center = [userLon, userLat];
+                    view.zoom = 12;
+                    console.log(`Map centered to user location: ${userLat}, ${userLon}`);
+                },
+                function () {
+                    console.warn("Geolocation permission denied or failed. Showing world view.");
+                }
+            );
+        } else {
+            console.warn("Geolocation not supported by browser. Showing world view.");
+        }
 
         var pinSymbol = new TextSymbol({
             color: '#f50856',
@@ -72,6 +92,7 @@ WildRydes.map = WildRydes.map || {};
             updateCenter(view.center);
         });
 
+        // 📌 Allow selecting any point by clicking
         view.on('click', function handleViewClick(event) {
             wrMap.selectedPoint = event.mapPoint;
             view.graphics.remove(pinGraphic);
@@ -120,3 +141,4 @@ WildRydes.map = WildRydes.map || {};
         };
     });
 }(jQuery));
+
