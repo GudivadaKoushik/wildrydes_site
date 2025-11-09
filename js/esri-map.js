@@ -20,35 +20,18 @@ WildRydes.map = WildRydes.map || {};
     ) {
         var wrMap = WildRydes.map;
 
-        // 🗺️ Create map with light gray style
+        // 🗺️ Create base map
         var map = new Map({ basemap: 'gray-vector' });
 
-        // 🌍 Default view (global map)
+        // 🌍 Initialize view with world map as default
         var view = new MapView({
-            center: [0, 0], // Center of the world
             container: 'map',
             map: map,
-            zoom: 2 // Zoomed out to show the world
+            center: [0, 0], // Longitude, Latitude
+            zoom: 2
         });
 
-        // 📍 Try to auto-center on user's location
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function (position) {
-                    const userLon = position.coords.longitude;
-                    const userLat = position.coords.latitude;
-                    view.center = [userLon, userLat];
-                    view.zoom = 12;
-                    console.log(`Map centered to user location: ${userLat}, ${userLon}`);
-                },
-                function () {
-                    console.warn("Geolocation permission denied or failed. Showing world view.");
-                }
-            );
-        } else {
-            console.warn("Geolocation not supported by browser. Showing world view.");
-        }
-
+        // 🧭 Pin symbol (pink)
         var pinSymbol = new TextSymbol({
             color: '#f50856',
             text: '\ue61d',
@@ -58,6 +41,7 @@ WildRydes.map = WildRydes.map || {};
             }
         });
 
+        // 🦄 Unicorn icon symbol
         var unicornSymbol = new PictureMarkerSymbol({
             url: '/images/unicorn-icon.png',
             width: '25px',
@@ -67,6 +51,7 @@ WildRydes.map = WildRydes.map || {};
         var pinGraphic;
         var unicornGraphic;
 
+        // 🧠 Update functions
         function updateCenter(newValue) {
             wrMap.center = {
                 latitude: newValue.latitude,
@@ -90,9 +75,48 @@ WildRydes.map = WildRydes.map || {};
         view.then(function onViewLoad() {
             updateExtent(view.extent);
             updateCenter(view.center);
+
+            // 🧭 Auto-locate user when map loads
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+
+                        // Center map to user's location
+                        view.center = [userLon, userLat];
+                        view.zoom = 14;
+
+                        // Drop pin at user's location
+                        var userPoint = new Point({
+                            latitude: userLat,
+                            longitude: userLon
+                        });
+
+                        pinGraphic = new Graphic({
+                            geometry: userPoint,
+                            symbol: pinSymbol
+                        });
+
+                        view.graphics.add(pinGraphic);
+                        wrMap.selectedPoint = userPoint;
+
+                        console.log(`📍 Auto-located at: ${userLat}, ${userLon}`);
+                        $(wrMap).trigger('pickupChange');
+                    },
+                    function (error) {
+                        console.warn("⚠️ Geolocation permission denied or unavailable, showing world view.");
+                        view.center = [0, 0];
+                        view.zoom = 2;
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                console.warn("⚠️ Browser does not support geolocation.");
+            }
         });
 
-        // 📌 Allow selecting any point by clicking
+        // 🖱️ Manual pin placement on map click
         view.on('click', function handleViewClick(event) {
             wrMap.selectedPoint = event.mapPoint;
             view.graphics.remove(pinGraphic);
@@ -104,6 +128,7 @@ WildRydes.map = WildRydes.map || {};
             $(wrMap).trigger('pickupChange');
         });
 
+        // 🦄 Animation function (unicorn flying)
         wrMap.animate = function animate(origin, dest, callback) {
             var startTime;
             var step = function animateFrame(timestamp) {
@@ -136,6 +161,7 @@ WildRydes.map = WildRydes.map || {};
             requestAnimationFrame(step);
         };
 
+        // 🧹 Function to clear pin
         wrMap.unsetLocation = function unsetLocation() {
             view.graphics.remove(pinGraphic);
         };
